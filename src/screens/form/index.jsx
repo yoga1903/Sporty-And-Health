@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, TextInput, Button, StyleSheet, Text, Alert } from 'react-native';
 import firestore from '@react-native-firebase/firestore';
+import notifee, { AndroidImportance } from '@notifee/react-native';
 
 export default function FormScreen({ navigation, route }) {
   const isEdit = !!route.params?.article;
@@ -9,7 +10,6 @@ export default function FormScreen({ navigation, route }) {
   const [category, setCategory] = useState('');
   const [description, setDescription] = useState('');
 
-  // Saat form dimuat, isi field jika edit
   useEffect(() => {
     if (isEdit) {
       const { title, image, category, description } = route.params.article;
@@ -19,6 +19,24 @@ export default function FormScreen({ navigation, route }) {
       setDescription(description);
     }
   }, [route.params?.article]);
+
+  const showNotification = async () => {
+    await notifee.requestPermission();
+
+    const channelId = await notifee.createChannel({
+      id: 'default',
+      name: 'Default Channel',
+      importance: AndroidImportance.HIGH,
+    });
+
+    await notifee.displayNotification({
+      title: 'Artikel Berhasil Ditambahkan',
+      body: `Artikel "${title}" telah disimpan.`,
+      android: {
+        channelId,
+      },
+    });
+  };
 
   const handleSubmit = async () => {
     if (!title || !image || !category || !description) {
@@ -35,12 +53,14 @@ export default function FormScreen({ navigation, route }) {
         await articlesCollection.doc(route.params.article.id).update(articleData);
       } else {
         await articlesCollection.add(articleData);
+
+        // Tampilkan notifikasi setelah 5 detik (hanya untuk tambah, bukan edit)
+        setTimeout(() => {
+          showNotification();
+        }, 5000);
       }
 
-      // Panggil fungsi refresh jika dikirim dari halaman sebelumnya
       route.params?.onGoBack?.();
-
-      // Kembali ke halaman sebelumnya
       navigation.goBack();
     } catch (error) {
       console.error('Firestore Error:', error);
