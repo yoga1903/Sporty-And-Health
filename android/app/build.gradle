@@ -77,9 +77,9 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace "com.multitech"
+    namespace "com.sporty_and_health"
     defaultConfig {
-        applicationId "com.multitech"
+        applicationId "com.sporty_and_health"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1

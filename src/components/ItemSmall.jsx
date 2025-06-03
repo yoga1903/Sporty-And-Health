@@ -1,33 +1,43 @@
-import React, { useRef, useState } from 'react';
-import { View, Text, Image, TouchableOpacity, StyleSheet, Animated } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, Image, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import firestore from '@react-native-firebase/firestore';
 
-const ItemSmall = ({ data, onBookmark, isBookmarked }) => {
-  const [likeCount, setLikeCount] = useState(0);
-  const likeAnim = useRef(new Animated.Value(1)).current;
-  const commentAnim = useRef(new Animated.Value(1)).current;
-  const shareAnim = useRef(new Animated.Value(1)).current;
+const ItemSmall = ({ data }) => {
+  const [isBookmarked, setIsBookmarked] = useState(false);
 
-  const animateButton = (animRef) => {
-    Animated.sequence([
-      Animated.timing(animRef, { toValue: 1.2, duration: 100, useNativeDriver: true }),
-      Animated.timing(animRef, { toValue: 1, duration: 100, useNativeDriver: true }),
-    ]).start();
-  };
+  useEffect(() => {
+    // Cek apakah artikel sudah dibookmark saat komponen dimuat
+    const checkBookmark = async () => {
+      try {
+        const docSnapshot = await firestore().collection('bookmarks').doc(data.id).get();
+        setIsBookmarked(docSnapshot.exists);
+      } catch (error) {
+        console.error('Gagal memeriksa bookmark:', error);
+      }
+    };
 
-  const handleLike = async () => {
-    animateButton(likeAnim);
-    setLikeCount(prev => prev + 1);
-    await playSound();
-  };
+    checkBookmark();
+  }, [data.id]);
 
-  const handleComment = () => {
-    animateButton(commentAnim);
-    console.log('Commented!');
-  };
+  const handleBookmark = async () => {
+    const bookmarkRef = firestore().collection('bookmarks').doc(data.id);
 
-  const handleShare = () => {
-    animateButton(shareAnim);
-    console.log('Shared!');
+    try {
+      if (isBookmarked) {
+        // Hapus bookmark
+        await bookmarkRef.delete();
+        setIsBookmarked(false);
+        Alert.alert('Dihapus', 'Artikel dihapus dari bookmark.');
+      } else {
+        // Tambahkan bookmark
+        await bookmarkRef.set(data);
+        setIsBookmarked(true);
+        Alert.alert('Ditambahkan', 'Artikel ditambahkan ke bookmark.');
+      }
+    } catch (error) {
+      console.error('Gagal toggle bookmark:', error);
+      Alert.alert('Error', 'Terjadi kesalahan saat memproses bookmark.');
+    }
   };
 
   return (
@@ -36,33 +46,11 @@ const ItemSmall = ({ data, onBookmark, isBookmarked }) => {
       <View style={styles.content}>
         <Text style={styles.title}>{data.title}</Text>
         <Text style={styles.desc}>{data.description}</Text>
-
-        <TouchableOpacity onPress={onBookmark}>
+        <TouchableOpacity onPress={handleBookmark}>
           <Text style={[styles.bookmark, { color: isBookmarked ? '#FFD700' : '#00AEEF' }]}>
             {isBookmarked ? '★ Bookmarked' : '☆ Bookmark'}
-          </Text>    
+          </Text>
         </TouchableOpacity>
-
-        {/* Action Buttons */}
-        <View style={styles.actionRow}>
-          <Animated.View style={{ transform: [{ scale: likeAnim }] }}>
-            <TouchableOpacity onPress={handleLike}>
-              <Text style={styles.action}>❤️ Like ({likeCount})</Text>
-            </TouchableOpacity>
-          </Animated.View>
-
-          <Animated.View style={{ transform: [{ scale: commentAnim }] }}>
-            <TouchableOpacity onPress={handleComment}>
-              <Text style={styles.action}>💬 Comment</Text>
-            </TouchableOpacity>
-          </Animated.View>
-
-          <Animated.View style={{ transform: [{ scale: shareAnim }] }}>
-            <TouchableOpacity onPress={handleShare}>
-              <Text style={styles.action}>📤 Share</Text>
-            </TouchableOpacity>
-          </Animated.View>
-        </View>
       </View>
     </View>
   );
@@ -96,16 +84,5 @@ const styles = StyleSheet.create({
   bookmark: {
     fontSize: 16,
     fontWeight: 'bold',
-    marginBottom: 10,
-  },
-  actionRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 5,
-  },
-  action: {
-    color: '#00AEEF',
-    fontSize: 14,
-    fontWeight: '600',
   },
 });

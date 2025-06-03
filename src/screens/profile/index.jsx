@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, Image, ScrollView, StyleSheet, Alert, Button } from 'react-native';
 import * as Animatable from 'react-native-animatable';
 import { ItemSmall } from '../../components';
-import axios from 'axios';
+import firestore from '@react-native-firebase/firestore';
 import { useIsFocused, useNavigation } from '@react-navigation/native';
 
 const ProfileScreen = ({ bookmarks }) => {
@@ -12,18 +12,21 @@ const ProfileScreen = ({ bookmarks }) => {
 
   const fetchArticles = async () => {
     try {
-      const response = await axios.get('https://681afe7c17018fe5057964ad.mockapi.io/api/blog');
-      setArticles(response.data);
+      const snapshot = await firestore().collection('articles').get();
+      const articleList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setArticles(articleList);
     } catch (error) {
+      console.error('Firestore Fetch Error:', error);
       Alert.alert('Gagal mengambil artikel');
     }
   };
 
   const handleDelete = async (id) => {
     try {
-      await axios.delete('https://681afe7c17018fe5057964ad.mockapi.io/api/blog/${id}');
+      await firestore().collection('articles').doc(id).delete();
       fetchArticles();
     } catch (error) {
+      console.error('Firestore Delete Error:', error);
       Alert.alert('Gagal menghapus artikel');
     }
   };
@@ -36,23 +39,18 @@ const ProfileScreen = ({ bookmarks }) => {
     <ScrollView style={styles.container}>
       <Animatable.View animation="zoomIn" duration={800} style={styles.profileBox}>
         <Image
-          source={{ uri: 'https://images.unsplash.com/photo-1511367461989-f85a21fda167?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8M3x8cHJvZmlsZXxlbnwwfHwwfHx8MA%3D%3D' }}
+          source={{
+            uri: 'https://images.unsplash.com/photo-1511367461989-f85a21fda167?w=500&auto=format&fit=crop&q=60',
+          }}
           style={styles.image}
         />
         <Text style={styles.name}>Satria Adiyoga</Text>
         <Text style={styles.info}>22180140</Text>
       </Animatable.View>
 
-      <Text style={styles.subHeader}>Bookmark Anda</Text>
-      {bookmarks.map((item, index) => (
-        <Animatable.View key={index} animation="fadeInUp" duration={600} delay={index * 100}>
-          <ItemSmall data={item} isBookmarked={true} />
-        </Animatable.View>
-      ))}
-
       <Text style={styles.subHeader}>Artikel Anda</Text>
       {articles.map((item, index) => (
-        <Animatable.View key={index} animation="fadeInUp" duration={600} delay={index * 100} style={{ marginBottom: 10 }}>
+        <Animatable.View key={item.id} animation="fadeInUp" duration={600} delay={index * 100} style={{ marginBottom: 10 }}>
           <ItemSmall data={item} />
           <View style={{ flexDirection: 'row', justifyContent: 'space-around', marginBottom: 10 }}>
             <Button title="Edit" onPress={() => navigation.navigate('Form', { article: item })} color="#00AEEF" />

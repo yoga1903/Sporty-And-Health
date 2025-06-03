@@ -1,13 +1,24 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, TextInput, Button, StyleSheet, Text, Alert } from 'react-native';
-import axios from 'axios';
+import firestore from '@react-native-firebase/firestore';
 
 export default function FormScreen({ navigation, route }) {
   const isEdit = !!route.params?.article;
-  const [title, setTitle] = useState(route.params?.article?.title || '');
-  const [image, setImage] = useState(route.params?.article?.image || '');
-  const [category, setCategory] = useState(route.params?.article?.category || '');
-  const [description, setDescription] = useState(route.params?.article?.description || '');
+  const [title, setTitle] = useState('');
+  const [image, setImage] = useState('');
+  const [category, setCategory] = useState('');
+  const [description, setDescription] = useState('');
+
+  // Saat form dimuat, isi field jika edit
+  useEffect(() => {
+    if (isEdit) {
+      const { title, image, category, description } = route.params.article;
+      setTitle(title);
+      setImage(image);
+      setCategory(category);
+      setDescription(description);
+    }
+  }, [route.params?.article]);
 
   const handleSubmit = async () => {
     if (!title || !image || !category || !description) {
@@ -18,13 +29,21 @@ export default function FormScreen({ navigation, route }) {
     const articleData = { title, image, category, description };
 
     try {
+      const articlesCollection = firestore().collection('articles');
+
       if (isEdit) {
-        await axios.put('https://681afe7c17018fe5057964ad.mockapi.io/api/blog/${route.params.article.id}', articleData);
+        await articlesCollection.doc(route.params.article.id).update(articleData);
       } else {
-        await axios.post('https://681afe7c17018fe5057964ad.mockapi.io/api/blog' , articleData);
+        await articlesCollection.add(articleData);
       }
+
+      // Panggil fungsi refresh jika dikirim dari halaman sebelumnya
+      route.params?.onGoBack?.();
+
+      // Kembali ke halaman sebelumnya
       navigation.goBack();
     } catch (error) {
+      console.error('Firestore Error:', error);
       Alert.alert('Gagal menyimpan artikel');
     }
   };
@@ -32,13 +51,31 @@ export default function FormScreen({ navigation, route }) {
   return (
     <View style={styles.container}>
       <Text style={styles.label}>Judul</Text>
-      <TextInput style={styles.input} value={title} onChangeText={setTitle} placeholder="Judul" placeholderTextColor="#777" />
+      <TextInput
+        style={styles.input}
+        value={title}
+        onChangeText={setTitle}
+        placeholder="Judul"
+        placeholderTextColor="#777"
+      />
 
       <Text style={styles.label}>Link Gambar</Text>
-      <TextInput style={styles.input} value={image} onChangeText={setImage} placeholder="URL Gambar" placeholderTextColor="#777" />
+      <TextInput
+        style={styles.input}
+        value={image}
+        onChangeText={setImage}
+        placeholder="URL Gambar"
+        placeholderTextColor="#777"
+      />
 
       <Text style={styles.label}>Kategori</Text>
-      <TextInput style={styles.input} value={category} onChangeText={setCategory} placeholder="Kategori" placeholderTextColor="#777" />
+      <TextInput
+        style={styles.input}
+        value={category}
+        onChangeText={setCategory}
+        placeholder="Kategori"
+        placeholderTextColor="#777"
+      />
 
       <Text style={styles.label}>Deskripsi</Text>
       <TextInput
